@@ -108,6 +108,8 @@ void cix_put(client_socket &server, const string &filename){
     is.read (buffer,length);
     is.close();
 
+    cix_header header;
+    header.command = cix_command::PUT;
     header.nbytes = length;
     memset (header.filename, 0, FILENAME_SIZE);
     strncpy(header.filename, filename.c_str(), filename.length());
@@ -115,6 +117,11 @@ void cix_put(client_socket &server, const string &filename){
     send_packet (server, &header, sizeof header);
     send_packet (server, buffer, length);
     outlog << "sent " << length << " bytes" << endl;
+
+    recv_packet(server, &header, sizeof header);
+    outlog << "received header " << header  << endl;
+    outlog << "received " << header.nbytes << " bytes" << endl;
+
 
 
 

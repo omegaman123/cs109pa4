@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
 using namespace std;
 
 #include <libgen.h>
@@ -46,9 +47,40 @@ void reply_ls (accepted_socket& client_sock, cix_header& header) {
    send_packet (client_sock, ls_output.c_str(), ls_output.size());
    outlog << "sent " << ls_output.size() << " bytes" << endl;
 }
+void reply_put(accepted_socket& client_sock, cix_header& header){
+    char * buffer = new char[header.nbytes];
+    recv_packet(client_sock, buffer, header.nbytes);
+    ofstream myFile;
+    myFile.open(header.filename, ios::out | ios::binary);
+    if ( (myFile.rdstate() & std::ofstream::failbit ) != 0 ) {
+        outlog << "Error writing " << header.filename << endl;
+        return;
+    }
+    myFile.write(buffer,header.nbytes);
+    myFile.close();
+    delete[] buffer;
 
+    header.command = cix_command::ACK;
+    header.nbytes = 0;
+    outlog << "sending header " << header << endl;
+    send_packet(client_sock, &header, sizeof header);
+    outlog << "sent " << header.nbytes << " bytes" << endl;
+}
 
-
+void reply_get(accepted_socket& client_sock, cix_header& header){
+    outlog << "cixd_get " << header.filename << endl;
+    header.command = cix_command::GET;
+    outlog << "sending header " << header << endl;
+    send_packet(client_sock, &header, sizeof header);
+
+}
+void reply_rm(accepted_socket& client_sock, cix_header& header){
+    outlog << "cixd_rm " << header.filename << endl;
+    header.command = cix_command::RM;
+    outlog << "sending header " << header << endl;
+    send_packet(client_sock, &header, sizeof header);
+}
+
 void run_server (accepted_socket& client_sock) {
    outlog.execname (outlog.execname() + "-server");
    outlog << "connected to " << to_string (client_sock) << endl;
@@ -61,6 +93,15 @@ void run_server (accepted_socket& client_sock) {
             case cix_command::LS: 
                reply_ls (client_sock, header);
                break;
+             case cix_command::PUT:
+                 reply_put(client_sock,header);
+                 break;
+             case cix_command::RM:
+                 reply_rm(client_sock,header);
+                 break;
+             case cix_command::GET:
+                 reply_get(client_sock,header);
+                 break;
             default:
                outlog << "invalid client header:" << header << endl;
                break;
