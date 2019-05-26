@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <vector>
 #include <regex>
+#include <fstream>
+#include <cstdint>
+#include <cstring>
 
 
 using namespace std;
@@ -84,11 +87,38 @@ void cix_rm(client_socket &server, const string &filename){
 
 void cix_put(client_socket &server, const string &filename){
     outlog << "cix_put " << filename << endl;
-    cix_header header;
-    header.command = cix_command::PUT;
+    int length;
+    char * buffer;
+
+    ifstream is;
+    is.open (filename, ios::binary );
+    if ( (is.rdstate() & std::ifstream::failbit ) != 0 ) {
+        outlog << "Error opening " << filename << endl;
+        return;
+    }
+
+    // get length of file:
+    is.seekg (0, ios::end);
+    length = is.tellg();
+    outlog << filename << " length: " << length << endl;
+    is.seekg (0, ios::beg);
+    // allocate memory:
+    buffer = new char [length];
+    // read data as a block:
+    is.read (buffer,length);
+    is.close();
+
+    header.nbytes = length;
+    memset (header.filename, 0, FILENAME_SIZE);
+    strncpy(header.filename, filename.c_str(), filename.length());
     outlog << "sending header " << header << endl;
-    send_packet(server, &header, sizeof header);
-    
+    send_packet (server, &header, sizeof header);
+    send_packet (server, buffer, length);
+    outlog << "sent " << length << " bytes" << endl;
+
+
+
+    delete[] buffer;
 }
 
 
