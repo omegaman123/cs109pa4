@@ -58,6 +58,7 @@ void reply_put(accepted_socket &client_sock, cix_header &header) {
     ofstream myFile;
     myFile.open(header.filename, ios::out | ios::binary);
 
+
     if ((myFile.rdstate() & std::ofstream::failbit) != 0) {
         outlog << "Error writing " << header.filename << endl;
         header.command = cix_command::NAK;
@@ -91,10 +92,43 @@ void reply_put(accepted_socket &client_sock, cix_header &header) {
 }
 
 void reply_get(accepted_socket &client_sock, cix_header &header) {
-    outlog << "cixd_get " << header.filename << endl;
-    header.command = cix_command::GET;
-    outlog << "sending header " << header << endl;
-    send_packet(client_sock, &header, sizeof header);
+
+    outlog << "Relp yget header " << header << endl;
+    ifstream is;
+    is.open (header.filename, ios::binary );
+    if((is.rdstate() & std::ifstream::failbit ) != 0 ){
+        header.command = cix_command::NAK;
+        header.nbytes = errno;
+        outlog << "sending header " << header << endl;
+        send_packet (client_sock, &header, sizeof header);
+    }
+
+    int length;
+    char * buffer;
+
+    is.seekg (0, ios::end);
+    length = is.tellg();
+    outlog << header.filename << " length: " << length << endl;
+    is.seekg (0, ios::beg);
+    // allocate memory:
+    buffer = new char [length];
+    // read data as a block:
+    is.read (buffer,length);
+    is.close();
+
+    cix_header rheader;
+    rheader.command = cix_command::FILEOUT;
+    rheader.nbytes = length;
+    string b = header.filename;
+    memset (rheader.filename, 0, FILENAME_SIZE);
+    strncpy(rheader.filename, b.c_str(), b.length());
+
+    outlog << "sending header " << rheader << endl;
+    send_packet (client_sock, &rheader, sizeof header);
+    send_packet (client_sock, buffer, length);
+    outlog << "sent " << length << " bytes" << endl;
+    delete[] buffer;
+
 
 }
 

@@ -70,9 +70,42 @@ void cix_get(client_socket &server, const string &filename){
  outlog << "cix_get " << filename << endl;
     cix_header header;
     header.command = cix_command::GET;
+    memset (header.filename, 0, FILENAME_SIZE);
+    strncpy(header.filename, filename.c_str(), filename.length());
     outlog << "sending header " << header << endl;
     send_packet(server, &header, sizeof header);
+    outlog << "sent " << header.nbytes << " bytes" << endl;
 
+    recv_packet(server,&header,sizeof header);
+    outlog << "received " << header.nbytes << " bytes" << endl;
+    outlog << "received header " << header << endl;
+
+    if(header.command == cix_command::NAK){
+        //err
+    } else if(header.command == cix_command::FILEOUT) {
+        cout << "Get file " << header.filename << " OK" << endl;
+        char *buffer = new char[header.nbytes];
+        ofstream myFile;
+        myFile.open(header.filename, ios::out | ios::binary);
+
+        if ((myFile.rdstate() & std::ofstream::failbit) != 0) {
+            outlog << "Error opening " << header.filename << endl;
+            cout << "Error opening " << header.filename << endl;
+            delete[] buffer;
+            return;
+        }
+
+        myFile.write(buffer, header.nbytes);
+        if (myFile.bad()) {
+            outlog << "Error writing " << header.filename << endl;
+            cout << "Error writing " << header.filename << endl;
+            delete[] buffer;
+            return;
+        }
+
+        myFile.close();
+        delete[] buffer;
+    }
 
 }
 
@@ -81,6 +114,7 @@ void cix_rm(client_socket &server, const string &filename){
     cix_header header;
     header.command = cix_command::RM;
     outlog << "sending header " << header << endl;
+
     send_packet(server, &header, sizeof header);
 
 }
@@ -127,7 +161,7 @@ void cix_put(client_socket &server, const string &filename){
         << endl;
         cout << "Error: " << header.nbytes << " " <<
         strerror(header.nbytes) << endl;
-        
+
     } else if(header.command == cix_command::ACK) {
         cout << "PUT for file " << header.filename<< " OK" << endl;
     }
