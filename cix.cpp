@@ -76,15 +76,24 @@ void cix_get(client_socket &server, const string &filename){
     send_packet(server, &header, sizeof header);
     outlog << "sent " << header.nbytes << " bytes" << endl;
 
+
+
     recv_packet(server,&header,sizeof header);
-    outlog << "received " << header.nbytes << " bytes" << endl;
     outlog << "received header " << header << endl;
 
+
+
     if(header.command == cix_command::NAK){
-        //err
+        cout << "Error getting file " << filename << endl;
+        cout << "Error: " << header.nbytes << " " <<
+             strerror(header.nbytes) << endl;
+        return;
     } else if(header.command == cix_command::FILEOUT) {
-        cout << "Get file " << header.filename << " OK" << endl;
         char *buffer = new char[header.nbytes];
+        cout << "Get file " << header.filename << " OK" << endl;
+        recv_packet(server, buffer, header.nbytes);
+        outlog << "received " << header.nbytes << " bytes" << endl;
+
         ofstream myFile;
         myFile.open(header.filename, ios::out | ios::binary);
 

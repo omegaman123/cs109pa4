@@ -101,6 +101,7 @@ void reply_get(accepted_socket &client_sock, cix_header &header) {
         header.nbytes = errno;
         outlog << "sending header " << header << endl;
         send_packet (client_sock, &header, sizeof header);
+        return;
     }
 
     int length;
