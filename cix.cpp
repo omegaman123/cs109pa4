@@ -119,16 +119,21 @@ void cix_put(client_socket &server, const string &filename){
     outlog << "sent " << length << " bytes" << endl;
 
     recv_packet(server, &header, sizeof header);
-    outlog << "received header " << header  << endl;
+    outlog << "received header " << header << endl;
     outlog << "received " << header.nbytes << " bytes" << endl;
 
-
-
+    if (header.command == cix_command::NAK){
+        cout << "PUT for file " << header.filename<< " failed"
+        << endl;
+        cout << "Error: " << header.nbytes << " " <<
+        strerror(header.nbytes) << endl;
+        
+    } else if(header.command == cix_command::ACK) {
+        cout << "PUT for file " << header.filename<< " OK" << endl;
+    }
 
     delete[] buffer;
 }
-
-
 
 void usage() {
     cerr << "Usage: " << outlog.execname() << " [host] [port]"
