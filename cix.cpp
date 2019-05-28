@@ -76,12 +76,8 @@ void cix_get(client_socket &server, const string &filename){
     send_packet(server, &header, sizeof header);
     outlog << "sent " << header.nbytes << " bytes" << endl;
 
-
-
     recv_packet(server,&header,sizeof header);
     outlog << "received header " << header << endl;
-
-
 
     if(header.command == cix_command::NAK){
         cout << "Error getting file " << filename << endl;
@@ -115,17 +111,29 @@ void cix_get(client_socket &server, const string &filename){
         myFile.close();
         delete[] buffer;
     }
-
 }
 
 void cix_rm(client_socket &server, const string &filename){
   outlog << "cix_rm " << filename << endl;
     cix_header header;
     header.command = cix_command::RM;
-    outlog << "sending header " << header << endl;
+    memset (header.filename, 0, FILENAME_SIZE);
+    strncpy(header.filename, filename.c_str(), filename.length());
 
+    outlog << "sending header " << header << endl;
     send_packet(server, &header, sizeof header);
 
+    recv_packet(server,&header,sizeof header);
+    outlog << "received header " << header << endl;
+
+    if (header.command == cix_command::NAK){
+        cout << "Error removing file " << header.filename << endl;
+        cout << "Error: " << header.nbytes << " " <<
+             strerror(header.nbytes) << endl;
+    } else{
+        cout << "Removing file " << header.filename
+        << " OK" << endl;
+    }
 }
 
 void cix_put(client_socket &server, const string &filename){
@@ -186,7 +194,7 @@ void usage() {
 
 int main(int argc, char **argv) {
     regex command{R"(^\s*[a-zA-Z]+\s+[^\/\s]+\s*$)"};
-    regex cmd_regex{R"(^\s*([a-z]+?)(\s+([^\/\s]{1,59}?))?\s*$)"};
+    regex cmd_regex{R"(^\s*([a-z]+?)(\s+([^\/\s]{1,58}?))?\s*$)"};
 
 
     outlog.execname(basename(argv[0]));
@@ -210,7 +218,10 @@ int main(int argc, char **argv) {
             auto match = regex_search(line, result, cmd_regex);
 
             if (!match) {
-                outlog << line << ": invalid command or filename"
+                if (line == ""){
+                    continue;
+                }
+                cout << line << ": invalid command or filename"
                        << endl;
                 continue;
             }

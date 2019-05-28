@@ -129,15 +129,24 @@ void reply_get(accepted_socket &client_sock, cix_header &header) {
     send_packet (client_sock, buffer, length);
     outlog << "sent " << length << " bytes" << endl;
     delete[] buffer;
-
-
 }
 
 void reply_rm(accepted_socket &client_sock, cix_header &header) {
-    outlog << "cixd_rm " << header.filename << endl;
-    header.command = cix_command::RM;
-    outlog << "sending header " << header << endl;
-    send_packet(client_sock, &header, sizeof header);
+
+    auto rc = unlink(header.filename);
+    if (rc == 0){
+        header.command = cix_command::ACK;
+        header.nbytes = 0;
+        outlog << "sending header " << header << endl;
+        send_packet(client_sock,&header, sizeof header);
+        return;
+    } else {
+        header.command = cix_command::NAK;
+        header.nbytes = errno;
+        outlog << "sending header " << header << endl;
+        send_packet(client_sock,&header, sizeof header);
+        return;
+    }
 }
 
 void run_server(accepted_socket &client_sock) {
